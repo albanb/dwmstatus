@@ -12,6 +12,8 @@
 #define BATT_LOW		15			// Below BATT_LOW percentage left on battery, the battery display turns red
 #define INTERVAL		1			// Sleeps for INTERVAL seconds between updates
 #define CPU_HI			80			// Above CPU_HIGH, cpu display turns red
+#define	WIRELESS		"wlp3s0"
+#define WIRED			"enp10s0"
 
 /* Files to read system information */
 #define BATT_NOW		"/sys/class/power_supply/BAT0/charge_now"
@@ -19,12 +21,15 @@
 #define BATT_STAT		"/sys/class/power_supply/BAT0/status"
 #define CPU_FILE		"/proc/stat"
 #define MEM_FILE		"/proc/meminfo"
-#define NET_FILE_UPLOAD		"/sys/class/net/enp10s0/statistics/tx_bytes"
-#define NET_FILE_DOWNLOAD	"/sys/class/net/enp10s0/statistics/rx_bytes"
-#define NET_FILE_OPER		"/sys/class/net/enp10s0/operstate"
-#define WIFI_FILE_UPLOAD	"/sys/class/net/wlp3s0/statistics/tx_bytes"
-#define WIFI_FILE_DOWNLOAD	"/sys/class/net/wlp3s0/statistics/rx_bytes"
-#define WIFI_FILE_OPER		"/sys/class/net/wlp3s0/operstate"
+#define FILE_UPLOAD		"/sys/class/net/%s/statistics/tx_bytes"
+#define FILE_DOWNLOAD		"/sys/class/net/%s/statistics/rx_bytes"
+#define FILE_OPER		"/sys/class/net/%s/operstate"
+//#define NET_FILE_UPLOAD	"/sys/class/net/enp10s0/statistics/tx_bytes"
+//#define NET_FILE_DOWNLOAD	"/sys/class/net/enp10s0/statistics/rx_bytes"
+//#define NET_FILE_OPER		"/sys/class/net/enp10s0/operstate"
+//#define WIFI_FILE_UPLOAD	"/sys/class/net/wlp3s0/statistics/tx_bytes"
+//#define WIFI_FILE_DOWNLOAD	"/sys/class/net/wlp3s0/statistics/rx_bytes"
+//#define WIFI_FILE_OPER	"/sys/class/net/wlp3s0/operstate"
 #define TODO_FILE		"/home/alban/.local/share/todo/todo.txt"
 #define MOUNT_DIR		"/media"
 #define KERNELOS		"/proc/sys/kernel/osrelease"
@@ -74,6 +79,7 @@ static int bat(char *stat);
 static int mktimes(char *stat);
 static int proc(char *stat);
 static int mem(char *stat);
+static int is_up(char *device);
 static int net(char *stat);
 static int todo(char *stat);
 static int mount(char *stat);
@@ -288,7 +294,73 @@ int mem(char *stat)
 	return len;
 }
 
+/*Check if a device is up or not*/
+int is_up(char *device)
+{
+	char sdevicepath[35],sdevicestate[5];
+	FILE *infile;
+
+	sprintf(sdevicepath,FILE_OPER,device);
+	infile=fopen(sdevicepath,"r");
+	if (infile != NULL)
+	{
+		fscanf(infile,"%s\n",sdevicestate);
+		fclose(infile);
+		if(strncmp(sdevicestate,"up",2) == 0)
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+
 /*Set net information */
+int net(char *stat)
+{
+	char sfilepath[43];
+	FILE *infile;
+	static long slup=0,sldown=0;
+	long lupload=0,ldownload=0,luploadrate,ldownloadrate;
+	int len;
+
+	if(is_up(WIRED) == 1)
+	{
+		sprintf(sfilepath,FILE_UPLOAD,WIRED);
+		infile=fopen(sfilepath,"r");
+		fscanf(infile,"%ld\n",&lupload);
+		fclose(infile);
+		sprintf(sfilepath,FILE_DOWNLOAD,WIRED);
+		infile=fopen(sfilepath,"r");
+		fscanf(infile,"%ld\n",&ldownload);
+		fclose(infile);
+		luploadrate=(lupload-slup)/512;
+		ldownloadrate=(ldownload-sldown)/512;
+		len = sprintf(stat,NET_STR,luploadrate,ldownloadrate);
+	}
+	else if(is_up(WIRELESS) == 1)
+	{
+		sprintf(sfilepath,FILE_UPLOAD,WIRELESS);
+		infile=fopen(sfilepath,"r");
+		fscanf(infile,"%ld\n",&lupload);
+		fclose(infile);
+		sprintf(sfilepath,FILE_DOWNLOAD,WIRELESS);
+		infile=fopen(sfilepath,"r");
+		fscanf(infile,"%ld\n",&ldownload);
+		fclose(infile);
+		luploadrate=(lupload-slup)/512;
+		ldownloadrate=(ldownload-sldown)/512;
+		len = sprintf(stat,WIFI_STR,luploadrate,ldownloadrate);
+	}
+	else
+	{
+		len = sprintf(stat,NET_DOWN_STR,lupload,ldownload);
+	}
+	slup=lupload;
+	sldown=ldownload;
+	return len;
+}	
+
+/*
 int net(char *stat)
 {
 	int len;
@@ -365,6 +437,7 @@ int net(char *stat)
 
 	return len;
 }
+*/
 
 /* Set todo number */
 int todo(char *stat)
