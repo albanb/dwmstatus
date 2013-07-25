@@ -17,6 +17,11 @@ pkgver() {
   echo "0.1"
 }
 
+prepare() {
+  cd "${srcdir}/$_pkgname"
+  cp ../../dwmstatus.h .
+}
+
 build() {
   cd "${srcdir}/$_pkgname"
   make
