@@ -8,7 +8,61 @@
 #include <X11/Xlib.h>
 #include <alsa/asoundlib.h>
 #include <dirent.h>
-#include <dwmstatus.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <gnutls/gnutls.h>
+#include <gnutls/x509.h>
+
+/* Macros definition */
+#define LENGTH(X) (sizeof X / sizeof X[0])
+#define BUF_SIZE (2048)
+
+/* structures declaration*/
+typedef struct {
+	int (*func)(char *);
+	int refresh;
+	char * const *cmd;
+} Stbar;
+
+typedef struct {
+	char *cmp;
+	char *chaine;
+} Notification;
+
+int protocol_priority[] = {GNUTLS_TLS1_2, GNUTLS_TLS1_1, GNUTLS_TLS1, GNUTLS_SSL3, 0};
+
+typedef enum { imap, imaps } Protocol;
+
+typedef struct
+{
+	gnutls_session_t session;
+	gnutls_certificate_credentials_t xcred;
+} SslSession;
+
+typedef union Session
+{
+	FILE *f;
+	SslSession s;
+} Comm;
+
+typedef struct
+{
+	char *serverName;
+	Protocol protocol;
+	int port;
+	char *user;
+	char *passwd;
+	char *inbox;
+	Comm comm;
+} Box;
+
+typedef struct
+{
+	int (*mailInit) (Box *boxes);
+	int (*mailRead) (char *buf, char *ctl, Box boxes);
+	int (*mailWrite) (char *buf, Box boxes);
+	int (*mailClose) (int fd, Box boxes);
+} MailFunction;
 
 /* Functions declaration */
 static int alsa_sound(char *stat);
@@ -23,24 +77,20 @@ static int mount(char *stat);
 static int os_kernel(char *stat);
 static int notifications(char *stat);
 static int runevery(time_t *ltime, int sec);
+static int mailImap (char *stat);
+static int mail_socket_init (Box *boxes);
+static int mail_socket_write (char *buf, Box boxes);
+static int mail_socket_read (char *buf, char *ctl, Box boxes);
+static int mail_socket_close (int fd, Box boxes);
+static int mail_ssl_init (Box *boxes);
+static int mail_ssl_write (char *buf, Box boxes);
+static int mail_ssl_read (char *buf, char *ctl, Box boxes);
+static int mail_ssl_close (int fd, Box boxes);
+static int sock_connect (char *hostname, int port);
+static int buffer_init (char *buf);
 
-static Stbar stbar[] = {
-	{ notifications, 60, NULL },
-	{ mount, 1, NULL },
-	{ todo, 60, NULL },
-	{ os_kernel, 60, NULL },
-	{ bat, 1, NULL },
-	{ proc, 1, NULL },
-	{ mem, 1, NULL },
-	{ net, 1, NULL },
-	{ alsa_sound, 1, NULL },
-	{ mktimes, 1, NULL },
-};
-
-static Notification notification[] = {
-	{"torrent;", TORRENT_STR },
-	{"cal;", REMIND_STR },
-};
+/*Yours configuration*/
+#include <dwmstatus.h>
 
 /*Main function*/
 int main() {
@@ -222,9 +272,9 @@ int mem(char *stat)
 	fscanf(infile,"SwapTotal: %ld kB\nSwapFree: %ld kB\n",&lnum5,&lnum6);
 	fclose(infile);
 	if (lnum5 != lnum6)
-		len=sprintf(stat,MEM_SWAP_STR,(lnum1-(lnum2+lnum3+lnum4))/1024,'M',lnum1/1024,'M');
+		len=sprintf(stat,MEM_SWAP_STR,(lnum1-(lnum2+lnum3+lnum4))/1024,'M');
 	else
-		len=sprintf(stat,MEM_STR,(lnum1-(lnum2+lnum3+lnum4))/1024,'M',lnum1/1024,'M');
+		len=sprintf(stat,MEM_STR,(lnum1-(lnum2+lnum3+lnum4))/1024,'M');
 
 	return len;
 }
@@ -400,4 +450,282 @@ int notifications(char *stat)
 	fclose(infile);
 
 	return len;
+}
+
+/*Mail notification via IMAP protocol*/
+int mailImap(char *stat)
+{
+	MailFunction mailFunction;
+	int fd, err, len = 0;
+	unsigned int newMail, nbBox;
+	char buf[BUF_SIZE];
+	char protCtl[128];
+	
+	/*Loop on all mailbox*/
+	for (nbBox = 0; nbBox < LENGTH(boxes); nbBox++)
+	{
+		/*Set functions to use depending on the mailbox protocol*/
+
+  		if (boxes[nbBox].protocol == imap)
+		{
+			mailFunction.mailInit = mail_socket_init;
+			mailFunction.mailRead = mail_socket_read;
+			mailFunction.mailWrite = mail_socket_write;
+			mailFunction.mailClose = mail_socket_close;
+		}
+		else if (boxes[nbBox].protocol == imaps )
+		{
+			mailFunction.mailInit = mail_ssl_init;
+			mailFunction.mailRead = mail_ssl_read;
+			mailFunction.mailWrite = mail_ssl_write;
+			mailFunction.mailClose = mail_ssl_close;
+		}
+		else
+		{
+			return -1;
+		}
+
+		/*Init environment to communicate with the server*/
+		fd = mailFunction.mailInit(&boxes[nbBox]);
+
+		/*Login to account*/
+		sprintf (buf, "a001 LOGIN %s %s\r\n", boxes[nbBox].user, boxes[nbBox].passwd);
+		mailFunction.mailWrite (buf, boxes[nbBox]);
+		strcpy (protCtl,"a001 ");
+		do
+		{
+			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
+		} while (err == 1);
+		if (strstr (buf,"a001 OK") == NULL)
+		{
+			return -1;
+		};
+		
+		/*Ask status to mailbox*/
+		sprintf (buf,"a002 STATUS %s (UNSEEN)\r\n",boxes[nbBox].inbox);
+		mailFunction.mailWrite (buf, boxes[nbBox]);
+		strcpy (protCtl,"a002 ");
+
+		/*Reinit buffer before reading status*/
+		buffer_init (buf);
+		do
+		{
+			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
+			sscanf(buf,"* STATUS %*s (UNSEEN %d)", &newMail);
+		} while (err == 1);
+		if (strstr (buf,"a002 OK") == NULL)
+		{
+			return -1;
+		};
+		/*Reinit buffer before reading status*/
+		buffer_init (buf);
+		/*Logout from account*/
+		sprintf (buf,"a003 LOGOUT\r\n");
+		mailFunction.mailWrite (buf, boxes[nbBox]);
+		strcpy (protCtl,"a003 ");
+		do
+		{
+			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
+		} while (err == 1);
+		if (strstr (buf,"a003 OK") == NULL)
+		{
+			return -1;
+		};
+		/*Close and free environment*/
+		mailFunction.mailClose (fd, boxes[nbBox]);
+		switch (nbBox)
+		{
+			case 0:
+				len = sprintf (stat+len, MAIL_STR_0, newMail);
+				break;
+			case 1:
+				len = strlen (stat);
+				len = sprintf (stat+len, MAIL_STR_1, newMail);
+				break;
+			case 2:
+				len = strlen (stat);
+				len = sprintf (stat+len, MAIL_STR_2, newMail);
+				break;
+			case 3:
+				len = strlen (stat);
+				len = sprintf (stat+len, MAIL_STR_3, newMail);
+				break;
+		}
+	}
+
+	return 0;
+
+}
+
+int mail_socket_init (Box *boxes)
+{
+	int fd;
+	FILE *fp;
+
+	fd = sock_connect (boxes->serverName, boxes->port);
+	fp = fdopen (fd, "r+");
+	boxes->comm.f = fp;
+	
+	return fd;
+}
+
+int mail_socket_write (char *buf, Box boxes)
+{
+	fprintf (boxes.comm.f, "%s", buf);
+	fflush (boxes.comm.f);
+
+	return 0;
+}
+
+int mail_socket_read (char *buf, char *ctl, Box boxes)
+{
+	int len = 0;
+
+	buf[0] = '\0';
+
+	do
+	{
+		len = strlen (buf);
+		fflush (boxes.comm.f);
+		fgets (buf+len, BUF_SIZE, boxes.comm.f);
+	} while ((strstr(buf+len,ctl) == NULL) && (len < BUF_SIZE));
+
+	return 0;
+}
+
+int mail_socket_close (int fd, Box boxes)
+{
+	fclose (boxes.comm.f);
+	close (fd);
+
+	return 0;
+}
+
+int mail_ssl_init (Box *boxes)
+{
+	int fd, err, type;
+	unsigned int status;
+	gnutls_certificate_credentials_t xcred;
+	gnutls_session_t session;
+	gnutls_datum_t out;
+
+	/*Init SSL session and certificates */
+	gnutls_global_init();
+	gnutls_certificate_allocate_credentials (&xcred);
+  	gnutls_certificate_set_x509_trust_file (xcred, CAFILE, GNUTLS_X509_FMT_PEM);
+	gnutls_init (&session, GNUTLS_CLIENT);
+
+	/*Create kernel socket to use for SSL session*/
+	fd = sock_connect (boxes->serverName, boxes->port);
+
+	/*Initialise transport layer for SSL connection*/
+	gnutls_transport_set_ptr (session, (gnutls_transport_ptr)fd);
+  	gnutls_set_default_priority (session);
+  	gnutls_protocol_set_priority (session, protocol_priority);
+	gnutls_credentials_set (session, GNUTLS_CRD_CERTIFICATE, xcred);
+	/*SSL handshake to negociate connection with server*/
+	do
+	{
+	    err = gnutls_handshake (session);
+    	} while (err < 0 && gnutls_error_is_fatal (err) == 0);
+  
+	/*Check server credentials*/
+	gnutls_certificate_verify_peers3 (session, boxes->serverName, &status);
+	type = gnutls_certificate_type_get (session);
+	gnutls_certificate_verification_status_print( status, type, &out, 0);
+	gnutls_free(out.data);
+
+	boxes->comm.s.session = session;
+	boxes->comm.s.xcred = xcred;
+
+	return fd;
+}
+
+int mail_ssl_write (char *buf, Box boxes)
+{
+	int len, err, sent = 0;
+
+	len = strlen(buf);
+	do
+	{
+		err = gnutls_record_send (boxes.comm.s.session, buf+sent, len-sent);
+		sent+=err;
+	}
+	while (sent < len);
+
+	return len;
+}
+
+int mail_ssl_read (char *buf, char *ctl, Box boxes)
+{
+	int err;
+	int len = 0;
+
+	do
+	{
+		err = gnutls_record_recv (boxes.comm.s.session,buf+len,BUF_SIZE);
+		len = strlen (buf);
+	}
+	while ((err == GNUTLS_E_AGAIN || err == GNUTLS_E_INTERRUPTED || strstr(buf,ctl) == NULL) && len < BUF_SIZE);
+
+	return 0;
+}
+
+int mail_ssl_close (int fd, Box boxes)
+{
+	gnutls_certificate_credentials_t xcred;
+
+	/*End SSL connection*/
+	gnutls_bye (boxes.comm.s.session, GNUTLS_SHUT_RDWR);
+	gnutls_deinit (boxes.comm.s.session);
+	gnutls_certificate_free_credentials (boxes.comm.s.xcred);
+	gnutls_global_deinit ();
+	close (fd);
+
+	return 0;
+}
+
+int sock_connect (char *hostname, int port)
+{
+  struct hostent *host;
+  struct sockaddr_in addr;
+  int fd, i;
+
+  host = gethostbyname (hostname);
+  if (host == NULL)
+    {
+      printf ("%s\n", "gethostbyname");
+      return (-1);
+    };
+
+  fd = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (fd == -1)
+    {
+      printf ("%s\n", "Error opening socket");
+      return (-1);
+    };
+
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = *(unsigned long *) host->h_addr_list[0];
+  addr.sin_port = htons (port);
+  i = connect (fd, (struct sockaddr *) &addr, sizeof (struct sockaddr));
+  if (i == -1)
+    {
+      printf ("%s\n", "Error connecting");
+      close (fd);
+      return (-1);
+    };
+  return (fd);
+}
+
+int buffer_init(char *buf)
+{
+	int i;
+
+	for (i=0; i < BUF_SIZE; i++)
+	{
+		buf[i] = '\0';
+	}
+
+	return 0;
 }
