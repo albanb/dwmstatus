@@ -533,23 +533,26 @@ int mailImap(char *stat)
 		};
 		/*Close and free environment*/
 		mailFunction.mailClose (fd, boxes[nbBox]);
+		if (newMail > 0)
+		{
 		switch (nbBox)
 		{
-			case 0:
-				len = sprintf (stat+len, MAIL_STR_0, newMail);
-				break;
-			case 1:
-				len = strlen (stat);
-				len = sprintf (stat+len, MAIL_STR_1, newMail);
-				break;
-			case 2:
-				len = strlen (stat);
-				len = sprintf (stat+len, MAIL_STR_2, newMail);
-				break;
-			case 3:
-				len = strlen (stat);
-				len = sprintf (stat+len, MAIL_STR_3, newMail);
-				break;
+				case 0:
+					len = sprintf (stat+len, MAIL_STR_0, newMail);
+					break;
+				case 1:
+					len = strlen (stat);
+					len = sprintf (stat+len, MAIL_STR_1, newMail);
+					break;
+				case 2:
+					len = strlen (stat);
+					len = sprintf (stat+len, MAIL_STR_2, newMail);
+					break;
+				case 3:
+					len = strlen (stat);
+					len = sprintf (stat+len, MAIL_STR_3, newMail);
+					break;
+			}
 		}
 	}
 
