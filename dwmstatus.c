@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 #include <time.h>
 #include <locale.h>
@@ -23,11 +24,6 @@ typedef struct {
 	int refresh;
 	char * const *cmd;
 } Stbar;
-
-typedef struct {
-	char *cmp;
-	char *chaine;
-} Notification;
 
 int protocol_priority[] = {GNUTLS_TLS1_2, GNUTLS_TLS1_1, GNUTLS_TLS1, GNUTLS_SSL3, 0};
 
@@ -75,7 +71,6 @@ static int net(char *stat);
 static int todo(char *stat);
 static int mount(char *stat);
 static int os_kernel(char *stat);
-static int notifications(char *stat);
 static int runevery(time_t *ltime, int sec);
 static int mailImap (char *stat);
 static int mail_socket_init (Box *boxes);
@@ -416,42 +411,6 @@ int os_kernel(char *stat)
 	return len;
 }
 
-/* Notifications */
-int notifications(char *stat)
-{
-	int len, lentmp, i, inb[LENGTH(notification)]={0};
-	char *buf, *bufsuivre, *statn;
-	FILE *infile;
-	int bufsize = 1000;
-
-	statn = stat;
-	buf = (char *) calloc(bufsize,1);
-	infile = fopen(NOTIFILE,"r");
-	while(fgets(buf,bufsize,infile))
-	{
-		for (i = 0; i < LENGTH(notification); i++)
-		{
-			bufsuivre=strstr(buf,notification[i].cmp);
-			if (bufsuivre != NULL)
-			{
-				inb[i]++;
-			}
-		}
-	}
-	for (i = 0; i < LENGTH(notification); i++)
-	{
-		if ( inb[i] != 0)
-		{
-			lentmp = sprintf(statn,notification[i].chaine,inb[i]);
-			len += lentmp;
-			statn = statn + lentmp;
-		}
-	}
-	fclose(infile);
-
-	return len;
-}
-
 /*Mail notification via IMAP protocol*/
 int mailImap(char *stat)
 {
@@ -511,7 +470,7 @@ int mailImap(char *stat)
 		do
 		{
 			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
-			sscanf(buf,"* STATUS %*s (UNSEEN %d)", &newMail);
+			sscanf(buf,"* STATUS %*s (UNSEEN %u)", &newMail);
 		} while (err == 1);
 		if (strstr (buf,"a002 OK") == NULL)
 		{
@@ -566,7 +525,16 @@ int mail_socket_init (Box *boxes)
 	FILE *fp;
 
 	fd = sock_connect (boxes->serverName, boxes->port);
+	if (fd == -1)
+	{
+		return -1;
+	}
 	fp = fdopen (fd, "r+");
+	if (fp == NULL)
+	{
+		perror ("dwmstatus error opening file");
+		return -1;
+	}
 	boxes->comm.f = fp;
 	
 	return fd;
@@ -574,23 +542,46 @@ int mail_socket_init (Box *boxes)
 
 int mail_socket_write (char *buf, Box boxes)
 {
-	fprintf (boxes.comm.f, "%s", buf);
-	fflush (boxes.comm.f);
+	int size, err;
 
-	return 0;
+	size = fprintf (boxes.comm.f, "%s", buf);
+	if (size < 0)
+	{
+		perror ("dwmstatus error writing");
+		return -1;
+	}
+
+	err = fflush (boxes.comm.f);
+	if (err != 0)
+	{
+		perror ("dwmstatus error flushing");
+		return -1;
+	}
+
+	return size;
 }
 
 int mail_socket_read (char *buf, char *ctl, Box boxes)
 {
-	int len = 0;
+	int err, len = 0;
 
 	buf[0] = '\0';
 
 	do
 	{
 		len = strlen (buf);
-		fflush (boxes.comm.f);
-		fgets (buf+len, BUF_SIZE, boxes.comm.f);
+		err = fflush (boxes.comm.f);
+		if (err != 0)
+		{
+			perror ("dwmstatus error flushing");
+			return -1;
+		}
+		
+		if (fgets (buf+len, BUF_SIZE, boxes.comm.f) == NULL)
+		{
+			perror ("dwmstatus error reading");
+			return -1;
+		}
 	} while ((strstr(buf+len,ctl) == NULL) && (len < BUF_SIZE));
 
 	return 0;
@@ -598,10 +589,22 @@ int mail_socket_read (char *buf, char *ctl, Box boxes)
 
 int mail_socket_close (int fd, Box boxes)
 {
-	fclose (boxes.comm.f);
-	close (fd);
+	int err;
 
-	return 0;
+	err = fclose (boxes.comm.f);
+	if (err !=0)
+	{
+		perror ("dwmstatus error closing");
+		return -1;
+	}
+	err = close (fd);
+	if (err == -1)
+	{
+		perror ("dwmstatus error closing");
+		return -1;
+	}
+
+	return err;
 }
 
 int mail_ssl_init (Box *boxes)
@@ -697,14 +700,15 @@ int sock_connect (char *hostname, int port)
   host = gethostbyname (hostname);
   if (host == NULL)
     {
-      printf ("%s\n", "gethostbyname");
+      errno = h_errno;
+      perror("dwmstatus gethostbyname");
       return (-1);
     };
 
   fd = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (fd == -1)
     {
-      printf ("%s\n", "Error opening socket");
+      perror("dwmstatus error opening socket");
       return (-1);
     };
 
@@ -714,7 +718,7 @@ int sock_connect (char *hostname, int port)
   i = connect (fd, (struct sockaddr *) &addr, sizeof (struct sockaddr));
   if (i == -1)
     {
-      printf ("%s\n", "Error connecting");
+      perror("dwmstatus error connecting");
       close (fd);
       return (-1);
     };

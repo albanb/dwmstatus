@@ -10,7 +10,6 @@
 #define TODO_FILE		"/home/alban/.local/share/todo/todo.txt"
 #define MOUNT_DIR		"/media"
 #define KERNELOS		"/proc/sys/kernel/osrelease"
-#define NOTIFILE		"/home/alban/.local/share/dwm/notification"
 #define CAFILE "/etc/ssl/certs/ca-certificates.crt"
 
 #define VOL_CH			"Master"	// Channel to watch for volume
@@ -38,15 +37,12 @@
 #define TODO_STR		"\x01\uE01F %d"			// Todo string
 #define MOUNT_STR		"\x01\uE00C %d"			// Mount string
 #define KERNEL_STR		"\x01\uE00E %s"			// Kernel string
-#define TORRENT_STR		"\x01\uE065 %d"			// Torrent string
-#define REMIND_STR		"\x01\uE01C %d"			// Reminder string
 #define MAIL_STR_0		"\x01\uE072 %d"		// Mail notification string
 #define MAIL_STR_1		"\x02 %d"			// Mail notification string
 #define MAIL_STR_2		"\x03 %d"			// Mail notification string
 #define MAIL_STR_3		"\x04 %d"			// Mail notification string
 
 static Stbar stbar[] = {
-	{ notifications, 60, NULL },
 	{ mount, 1, NULL },
 	{ mailImap, 600, NULL },
 	{ todo, 60, NULL },
@@ -57,11 +53,6 @@ static Stbar stbar[] = {
 	{ net, 1, NULL },
 	{ alsa_sound, 1, NULL },
 	{ mktimes, 1, NULL },
-};
-
-static Notification notification[] = {
-	{"torrent;", TORRENT_STR },
-	{"cal;", REMIND_STR },
 };
 
 Box boxes[] = {
