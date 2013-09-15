@@ -85,7 +85,7 @@ static int sock_connect (char *hostname, int port);
 static int buffer_init (char *buf);
 
 /*Yours configuration*/
-#include <dwmstatus.h>
+#include <dwmstbar.h>
 
 /*Main function*/
 int main() {
@@ -446,23 +446,33 @@ int mailImap(char *stat)
 
 		/*Init environment to communicate with the server*/
 		fd = mailFunction.mailInit(&boxes[nbBox]);
+		if (fd < 0)
+		{
+			return -1;
+		}
 
 		/*Login to account*/
 		sprintf (buf, "a001 LOGIN %s %s\r\n", boxes[nbBox].user, boxes[nbBox].passwd);
-		mailFunction.mailWrite (buf, boxes[nbBox]);
+		if (mailFunction.mailWrite (buf, boxes[nbBox]) < 0)
+		{
+			return -1;
+		}
 		strcpy (protCtl,"a001 ");
 		do
 		{
 			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
 		} while (err == 1);
-		if (strstr (buf,"a001 OK") == NULL)
+		if (strstr (buf,"a001 OK") == NULL || err < 0)
 		{
 			return -1;
 		};
 		
 		/*Ask status to mailbox*/
 		sprintf (buf,"a002 STATUS %s (UNSEEN)\r\n",boxes[nbBox].inbox);
-		mailFunction.mailWrite (buf, boxes[nbBox]);
+		if (mailFunction.mailWrite (buf, boxes[nbBox]) < 0)
+		{
+			return -1;
+		}
 		strcpy (protCtl,"a002 ");
 
 		/*Reinit buffer before reading status*/
@@ -472,7 +482,7 @@ int mailImap(char *stat)
 			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
 			sscanf(buf,"* STATUS %*s (UNSEEN %u)", &newMail);
 		} while (err == 1);
-		if (strstr (buf,"a002 OK") == NULL)
+		if (strstr (buf,"a002 OK") == NULL || err < 0)
 		{
 			return -1;
 		};
@@ -480,22 +490,28 @@ int mailImap(char *stat)
 		buffer_init (buf);
 		/*Logout from account*/
 		sprintf (buf,"a003 LOGOUT\r\n");
-		mailFunction.mailWrite (buf, boxes[nbBox]);
+		if (mailFunction.mailWrite (buf, boxes[nbBox]) < 0)
+		{
+			return -1;
+		}
 		strcpy (protCtl,"a003 ");
 		do
 		{
 			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
 		} while (err == 1);
-		if (strstr (buf,"a003 OK") == NULL)
+		if (strstr (buf,"a003 OK") == NULL || err < 0)
 		{
 			return -1;
 		};
 		/*Close and free environment*/
-		mailFunction.mailClose (fd, boxes[nbBox]);
+		if (mailFunction.mailClose (fd, boxes[nbBox]) < 0)
+		{
+			return -1;
+		}
 		if (newMail > 0)
 		{
-		switch (nbBox)
-		{
+			switch (nbBox)
+			{
 				case 0:
 					len = sprintf (stat+len, MAIL_STR_0, newMail);
 					break;
@@ -616,29 +632,86 @@ int mail_ssl_init (Box *boxes)
 	gnutls_datum_t out;
 
 	/*Init SSL session and certificates */
-	gnutls_global_init();
-	gnutls_certificate_allocate_credentials (&xcred);
-  	gnutls_certificate_set_x509_trust_file (xcred, CAFILE, GNUTLS_X509_FMT_PEM);
-	gnutls_init (&session, GNUTLS_CLIENT);
+	err = gnutls_global_init();
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl global init");
+		return -1;
+	}
+	err = gnutls_certificate_allocate_credentials (&xcred);
+  	if (err < 0)
+	{
+		perror ("dwmstatus ssl init allocate credentials");
+		return -1;
+	}
+	err = gnutls_certificate_set_x509_trust_file (xcred, CAFILE, GNUTLS_X509_FMT_PEM);
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl init add trusted ca");
+		return -1;
+	}
+	err = gnutls_init (&session, GNUTLS_CLIENT);
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl init");
+		return -1;
+	}
 
 	/*Create kernel socket to use for SSL session*/
 	fd = sock_connect (boxes->serverName, boxes->port);
+	if (fd == -1)
+		return -1;
 
 	/*Initialise transport layer for SSL connection*/
 	gnutls_transport_set_ptr (session, (gnutls_transport_ptr)fd);
-  	gnutls_set_default_priority (session);
-  	gnutls_protocol_set_priority (session, protocol_priority);
-	gnutls_credentials_set (session, GNUTLS_CRD_CERTIFICATE, xcred);
+  	err = gnutls_set_default_priority (session);
+  	if (err < 0)
+	{
+		perror ("dwmstatus ssl init set default priority");
+		return -1;
+	}
+	err = gnutls_protocol_set_priority (session, protocol_priority);
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl init set priority");
+		return -1;
+	}
+	err = gnutls_credentials_set (session, GNUTLS_CRD_CERTIFICATE, xcred);
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl init set credentials");
+		return -1;
+	}
 	/*SSL handshake to negociate connection with server*/
 	do
 	{
 	    err = gnutls_handshake (session);
     	} while (err < 0 && gnutls_error_is_fatal (err) == 0);
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl handshake");
+		return -1;
+	}
   
 	/*Check server credentials*/
-	gnutls_certificate_verify_peers3 (session, boxes->serverName, &status);
+	err = gnutls_certificate_verify_peers3 (session, boxes->serverName, &status);
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl init verify peers");
+		return -1;
+	}
 	type = gnutls_certificate_type_get (session);
-	gnutls_certificate_verification_status_print( status, type, &out, 0);
+	if (type == GNUTLS_CRT_UNKNOWN)
+	{
+		perror ("dwmstatus ssl init certificate type get");
+		return -1;
+	}
+	err = gnutls_certificate_verification_status_print( status, type, &out, 0);
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl init certificate verification");
+		return -1;
+	}
 	gnutls_free(out.data);
 
 	boxes->comm.s.session = session;
@@ -659,6 +732,12 @@ int mail_ssl_write (char *buf, Box boxes)
 	}
 	while (sent < len);
 
+	if (err < 0)
+	{
+		perror("dwmstatus ssl write");
+		return -1;
+	}
+
 	return len;
 }
 
@@ -674,19 +753,37 @@ int mail_ssl_read (char *buf, char *ctl, Box boxes)
 	}
 	while ((err == GNUTLS_E_AGAIN || err == GNUTLS_E_INTERRUPTED || strstr(buf,ctl) == NULL) && len < BUF_SIZE);
 
+	if (err < 0)
+	{
+		perror("dwmstatus ssl read");
+		return -1;
+	}
+
 	return 0;
 }
 
 int mail_ssl_close (int fd, Box boxes)
 {
+	int err;
 	gnutls_certificate_credentials_t xcred;
 
 	/*End SSL connection*/
-	gnutls_bye (boxes.comm.s.session, GNUTLS_SHUT_RDWR);
+	err = gnutls_bye (boxes.comm.s.session, GNUTLS_SHUT_RDWR);
+	if (err < 0)
+	{
+		perror ("dwmstatus ssl close session");
+		return -1;
+	}
 	gnutls_deinit (boxes.comm.s.session);
 	gnutls_certificate_free_credentials (boxes.comm.s.xcred);
 	gnutls_global_deinit ();
-	close (fd);
+	err = close (fd);
+	if (err == -1)
+	{
+		perror ("dwmstatus ssl close fd");
+		return -1;
+	}
+
 
 	return 0;
 }
@@ -700,7 +797,6 @@ int sock_connect (char *hostname, int port)
   host = gethostbyname (hostname);
   if (host == NULL)
     {
-      errno = h_errno;
       perror("dwmstatus gethostbyname");
       return (-1);
     };

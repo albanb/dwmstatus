@@ -1,5 +1,5 @@
-pkgname=dwmstatus-git
-_pkgname=dwmstatus
+pkgname=dwmstbar-git
+_pkgname=dwmstbar
 pkgver=0.1
 pkgrel=1
 pkgdesc="A status bar for dwm written in C"
@@ -19,7 +19,7 @@ pkgver() {
 
 prepare() {
   cd "${srcdir}/$_pkgname"
-  cp ../../dwmstatus.h .
+  cp ../../dwmstbar.h .
 }
 
 build() {
