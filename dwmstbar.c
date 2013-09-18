@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <errno.h>
 #include <string.h>
 #include <time.h>
@@ -201,30 +202,46 @@ int alsa_sound(char *stat)
 int bat(char *stat)
 {
 	FILE *infile;
-	long lnum1, lnum2;
-	int num, len;
+	static long lnum[5][2] = {0};
+	static int id = 0, batime = 0;
+	long lmaxbat;
+	int len;
 	char stattmp[50];
 
 	stattmp[0] = '\0';
 	/* Power / Battery */
 	infile = fopen(BATT_NOW,"r");
-	fscanf(infile,"%ld\n",&lnum1); fclose(infile);
-	infile = fopen(BATT_FULL,"r");
-	fscanf(infile,"%ld\n",&lnum2); fclose(infile);
+	fscanf(infile,"%ld\n",&lnum[(id+1)%5][0]);
+	fclose(infile);
 	infile = fopen(BATT_STAT,"r");
-	fscanf(infile,"%s\n",stattmp); fclose(infile);
-	num = lnum1*100/lnum2;
-	if (strncmp(stattmp,"Charging",8) == 0) {
-		len = sprintf(stat,BAT_CHRG_STR,num);
+	fscanf(infile,"%s\n",stattmp); 
+	fclose(infile);
+	infile = fopen(BATT_FULL,"r");
+	fscanf(infile,"%ld\n",&lmaxbat);
+	fclose(infile);
+	if (lnum[id][0] != lnum[(id+1)%5][0])
+	{
+		batime = (lnum[0][1]+lnum[1][1]+lnum[2][1]+lnum[3][1]+lnum[4][1]+1) * lnum[(id+1)%5][0]/(60*(lnum[(id+2)%5][0]-lnum[(id+1)%5][0]));
+		id = (id+1)%5;
+		lnum[(id+1)%5][1] = 0;
 	}
-	else if (strncmp(stattmp,"Full",8) == 0) {
-		len = sprintf(stat,BAT_FULL_STR,num);
+	else
+		lnum[(id+1)%5][1]++;
+	if (strncmp(stattmp,"Charging",8) == 0) 
+	{
+		len = sprintf(stat,BAT_CHRG_STR,100*lnum[(id+1)%5][0]/lmaxbat);
 	}
-	else {
-		if (num <  BATT_LOW)
-			len = sprintf(stat,BAT_LOW_STR,num);
+	else if (strncmp(stattmp,"Full",8) == 0) 
+	{
+		stat[0] = '\0';
+		len = 0;
+	}
+	else 
+	{
+		if (batime <  BATT_LOW)
+			len = sprintf(stat,BAT_LOW_STR,batime);
 		else
-			len = sprintf(stat,BAT_STR,num);
+			len = sprintf(stat,BAT_STR,batime);
 	}
 	return len;
 } 
@@ -548,7 +565,7 @@ int mail_socket_init (Box *boxes)
 	fp = fdopen (fd, "r+");
 	if (fp == NULL)
 	{
-		perror ("dwmstatus error opening file");
+		perror ("dwmstbar error opening file");
 		return -1;
 	}
 	boxes->comm.f = fp;
@@ -563,14 +580,14 @@ int mail_socket_write (char *buf, Box boxes)
 	size = fprintf (boxes.comm.f, "%s", buf);
 	if (size < 0)
 	{
-		perror ("dwmstatus error writing");
+		perror ("dwmstbar error writing");
 		return -1;
 	}
 
 	err = fflush (boxes.comm.f);
 	if (err != 0)
 	{
-		perror ("dwmstatus error flushing");
+		perror ("dwmstbar error flushing");
 		return -1;
 	}
 
@@ -589,13 +606,13 @@ int mail_socket_read (char *buf, char *ctl, Box boxes)
 		err = fflush (boxes.comm.f);
 		if (err != 0)
 		{
-			perror ("dwmstatus error flushing");
+			perror ("dwmstbar error flushing");
 			return -1;
 		}
 		
 		if (fgets (buf+len, BUF_SIZE, boxes.comm.f) == NULL)
 		{
-			perror ("dwmstatus error reading");
+			perror ("dwmstbar error reading");
 			return -1;
 		}
 	} while ((strstr(buf+len,ctl) == NULL) && (len < BUF_SIZE));
@@ -610,13 +627,13 @@ int mail_socket_close (int fd, Box boxes)
 	err = fclose (boxes.comm.f);
 	if (err !=0)
 	{
-		perror ("dwmstatus error closing");
+		perror ("dwmstbar error closing");
 		return -1;
 	}
 	err = close (fd);
 	if (err == -1)
 	{
-		perror ("dwmstatus error closing");
+		perror ("dwmstbar error closing");
 		return -1;
 	}
 
@@ -635,25 +652,25 @@ int mail_ssl_init (Box *boxes)
 	err = gnutls_global_init();
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl global init");
+		perror ("dwmstbar ssl global init");
 		return -1;
 	}
 	err = gnutls_certificate_allocate_credentials (&xcred);
   	if (err < 0)
 	{
-		perror ("dwmstatus ssl init allocate credentials");
+		perror ("dwmstbar ssl init allocate credentials");
 		return -1;
 	}
 	err = gnutls_certificate_set_x509_trust_file (xcred, CAFILE, GNUTLS_X509_FMT_PEM);
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl init add trusted ca");
+		perror ("dwmstbar ssl init add trusted ca");
 		return -1;
 	}
 	err = gnutls_init (&session, GNUTLS_CLIENT);
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl init");
+		perror ("dwmstbar ssl init");
 		return -1;
 	}
 
@@ -667,19 +684,19 @@ int mail_ssl_init (Box *boxes)
   	err = gnutls_set_default_priority (session);
   	if (err < 0)
 	{
-		perror ("dwmstatus ssl init set default priority");
+		perror ("dwmstbar ssl init set default priority");
 		return -1;
 	}
 	err = gnutls_protocol_set_priority (session, protocol_priority);
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl init set priority");
+		perror ("dwmstbar ssl init set priority");
 		return -1;
 	}
 	err = gnutls_credentials_set (session, GNUTLS_CRD_CERTIFICATE, xcred);
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl init set credentials");
+		perror ("dwmstbar ssl init set credentials");
 		return -1;
 	}
 	/*SSL handshake to negociate connection with server*/
@@ -689,7 +706,7 @@ int mail_ssl_init (Box *boxes)
     	} while (err < 0 && gnutls_error_is_fatal (err) == 0);
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl handshake");
+		perror ("dwmstbar ssl handshake");
 		return -1;
 	}
   
@@ -697,19 +714,19 @@ int mail_ssl_init (Box *boxes)
 	err = gnutls_certificate_verify_peers3 (session, boxes->serverName, &status);
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl init verify peers");
+		perror ("dwmstbar ssl init verify peers");
 		return -1;
 	}
 	type = gnutls_certificate_type_get (session);
 	if (type == GNUTLS_CRT_UNKNOWN)
 	{
-		perror ("dwmstatus ssl init certificate type get");
+		perror ("dwmstbar ssl init certificate type get");
 		return -1;
 	}
 	err = gnutls_certificate_verification_status_print( status, type, &out, 0);
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl init certificate verification");
+		perror ("dwmstbar ssl init certificate verification");
 		return -1;
 	}
 	gnutls_free(out.data);
@@ -734,7 +751,7 @@ int mail_ssl_write (char *buf, Box boxes)
 
 	if (err < 0)
 	{
-		perror("dwmstatus ssl write");
+		perror("dwmstbar ssl write");
 		return -1;
 	}
 
@@ -755,7 +772,7 @@ int mail_ssl_read (char *buf, char *ctl, Box boxes)
 
 	if (err < 0)
 	{
-		perror("dwmstatus ssl read");
+		perror("dwmstbar ssl read");
 		return -1;
 	}
 
@@ -771,7 +788,7 @@ int mail_ssl_close (int fd, Box boxes)
 	err = gnutls_bye (boxes.comm.s.session, GNUTLS_SHUT_RDWR);
 	if (err < 0)
 	{
-		perror ("dwmstatus ssl close session");
+		perror ("dwmstbar ssl close session");
 		return -1;
 	}
 	gnutls_deinit (boxes.comm.s.session);
@@ -780,7 +797,7 @@ int mail_ssl_close (int fd, Box boxes)
 	err = close (fd);
 	if (err == -1)
 	{
-		perror ("dwmstatus ssl close fd");
+		perror ("dwmstbar ssl close fd");
 		return -1;
 	}
 
@@ -797,14 +814,14 @@ int sock_connect (char *hostname, int port)
   host = gethostbyname (hostname);
   if (host == NULL)
     {
-      perror("dwmstatus gethostbyname");
+      perror("dwmstbar gethostbyname");
       return (-1);
     };
 
   fd = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (fd == -1)
     {
-      perror("dwmstatus error opening socket");
+      perror("dwmstbar error opening socket");
       return (-1);
     };
 
@@ -814,7 +831,7 @@ int sock_connect (char *hostname, int port)
   i = connect (fd, (struct sockaddr *) &addr, sizeof (struct sockaddr));
   if (i == -1)
     {
-      perror("dwmstatus error connecting");
+      perror("dwmstbar error connecting");
       close (fd);
       return (-1);
     };
