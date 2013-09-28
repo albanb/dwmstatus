@@ -97,6 +97,10 @@ int main() {
 	unsigned int i;
 	time_t lastrefresh[LENGTH(stbar)]={0};
 	char statbck[LENGTH(stbar)][100]; 
+	for (i=0; i < LENGTH(stbar); i++)
+	{
+		statbck[i][0]='\0';
+	}
 
 	setlocale(LC_ALL, "");
 /* Setup X display and root window id: */
@@ -115,11 +119,14 @@ int main() {
 		{
 			if(runevery(&lastrefresh[i],stbar[i].refresh))
 			{
-				stbar[i].func(statnext);
-				strcat(status,statnext);
-				statbck[i][0]='\0';
-				strcat(statbck[i],statnext);
-
+				if (stbar[i].func(statnext) >= 0)
+				{
+					strcat(status,statnext);
+					statbck[i][0]='\0';
+					strcat(statbck[i],statnext);
+				}
+				else
+					strcat(status,statbck[i]);
 			}
 			else
 				strcat(status,statbck[i]);
@@ -141,10 +148,10 @@ int runevery(time_t *ltime, int sec)
 	if (difftime(now, *ltime) >= sec)
 	{
 		*ltime =now;
-		return(1);
+		return 1;
 	}
 	else
-		return(0);
+		return 0;
 }
 
 /* Set time information */
@@ -202,7 +209,7 @@ int alsa_sound(char *stat)
 int bat(char *stat)
 {
 	FILE *infile;
-	static long lnum[5][2] = {0};
+	static long lnum[5][2] = {{0}};
 	static int id = 0, batime = 0;
 	long lmaxbat;
 	int len;
@@ -627,13 +634,7 @@ int mail_socket_close (int fd, Box boxes)
 	err = fclose (boxes.comm.f);
 	if (err !=0)
 	{
-		perror ("dwmstbar error closing");
-		return -1;
-	}
-	err = close (fd);
-	if (err == -1)
-	{
-		perror ("dwmstbar error closing");
+		perror ("dwmstbar error mail_socket_close");
 		return -1;
 	}
 
@@ -815,14 +816,14 @@ int sock_connect (char *hostname, int port)
   if (host == NULL)
     {
       perror("dwmstbar gethostbyname");
-      return (-1);
+      return -1;
     };
 
   fd = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (fd == -1)
     {
       perror("dwmstbar error opening socket");
-      return (-1);
+      return -1;
     };
 
   addr.sin_family = AF_INET;
@@ -833,9 +834,9 @@ int sock_connect (char *hostname, int port)
     {
       perror("dwmstbar error connecting");
       close (fd);
-      return (-1);
+      return -1;
     };
-  return (fd);
+  return fd;
 }
 
 int buffer_init(char *buf)
