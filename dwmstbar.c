@@ -72,6 +72,7 @@ static int net(char *stat);
 static int todo(char *stat);
 static int mount(char *stat);
 static int os_kernel(char *stat);
+static int temp(char *stat);
 static int runevery(time_t *ltime, int sec);
 static int mailImap (char *stat);
 static int mail_socket_init (Box *boxes);
@@ -85,7 +86,7 @@ static int mail_ssl_close (int fd, Box boxes);
 static int sock_connect (char *hostname, int port);
 static int buffer_init (char *buf);
 
-/*Yours configuration*/
+/*Your configuration*/
 #include <dwmstbar.h>
 
 /*Main function*/
@@ -433,6 +434,22 @@ int os_kernel(char *stat)
 	free(buf);
 
 	return len;
+}
+
+/* Current temperature */
+int temp(char *stat)
+{
+	int len;
+	int temp;
+	FILE *infile;
+
+	infile=fopen(TEMPFILE,"r");
+	fscanf(infile,"%d\n",&temp);
+	fclose(infile);
+	len=sprintf(stat,TEMP_STR,temp/1000);
+
+	return len;
+
 }
 
 /*Mail notification via IMAP protocol*/

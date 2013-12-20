@@ -11,7 +11,7 @@
 #define MOUNT_DIR		"/media"
 #define KERNELOS		"/proc/sys/kernel/osrelease"
 #define CAFILE "/etc/ssl/certs/ca-certificates.crt"
-
+#define TEMPFILE		"/sys/class/hwmon/hwmon1/device/temp1_input"
 #define VOL_CH			"Master"	// Channel to watch for volume
 #define	WIRELESS		"wlp3s0"
 #define WIRED			"enp10s0"
@@ -34,6 +34,7 @@
 #define WIFI_STR		"\x01\uE02D \uE060 %ldKbp/s \uE061 %ldKbp/s"	//NET down string up and down
 #define NET_DOWN_STR		"\x03\uE060 %ldKbp/s \uE061 %ldKbp/s"	//NET down string up and down
 #define DATE_TIME_STR		"\x01\uE015 %a %d %b %Y %H:%M"		// This is a strftime format string which is passed localtime
+#define TEMP_STR		"\x02\uE01D\x01%d°C"			// Temperature
 #define TODO_STR		"\x01\uE01F %d"			// Todo string
 #define MOUNT_STR		"\x01\uE00C %d"			// Mount string
 #define KERNEL_STR		"\x01\uE00E %s"			// Kernel string
@@ -50,6 +51,7 @@ static Stbar stbar[] = {
 	{ bat, 1, NULL },
 	{ proc, 1, NULL },
 	{ mem, 1, NULL },
+	{ temp, 1, NULL },
 	{ net, 1, NULL },
 	{ alsa_sound, 1, NULL },
 	{ mktimes, 1, NULL },
