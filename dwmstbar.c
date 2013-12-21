@@ -14,6 +14,8 @@
 #include <netdb.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
+#include <sys/statvfs.h>
+#include <sys/types.h>
 
 /* Macros definition */
 #define LENGTH(X) (sizeof X / sizeof X[0])
@@ -74,6 +76,8 @@ static int mount(char *stat);
 static int os_kernel(char *stat);
 static int temp(char *stat);
 static int runevery(time_t *ltime, int sec);
+static int get_freespace(char *mntpt);
+static int disk(char *stat);
 static int mailImap (char *stat);
 static int mail_socket_init (Box *boxes);
 static int mail_socket_write (char *buf, Box boxes);
@@ -450,6 +454,30 @@ int temp(char *stat)
 
 	return len;
 
+}
+
+int get_freespace(char *mntpt)
+{
+    struct statvfs data;
+    double total, used = 0;
+
+    if ( (statvfs(mntpt, &data)) < 0)
+    {
+		fprintf(stderr, "can't get info on disk.\n");
+		return 0;
+    }
+    total = (data.f_blocks * data.f_frsize);
+    used = (data.f_blocks - data.f_bfree) * data.f_frsize ;
+    return used/total*100;
+}
+
+int disk(char *stat)
+{
+	int len;
+
+	len=sprintf(stat,SIZE_STR,get_freespace("/"),get_freespace("/home"));
+
+	return len;
 }
 
 /*Mail notification via IMAP protocol*/

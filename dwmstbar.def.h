@@ -35,6 +35,7 @@
 #define NET_DOWN_STR		"\x03\uE060 %ldKbp/s \uE061 %ldKbp/s"	//NET down string up and down
 #define DATE_TIME_STR		"\x01\uE015 %a %d %b %Y %H:%M"		// This is a strftime format string which is passed localtime
 #define TEMP_STR		"\x02\uE01D\x01%d°C"			// Temperature
+#define SIZE_STR		"\x02\uE077\x01/ %d%% \uE10e %d%%"		// Size
 #define TODO_STR		"\x01\uE01F %d"			// Todo string
 #define MOUNT_STR		"\x01\uE00C %d"			// Mount string
 #define KERNEL_STR		"\x01\uE00E %s"			// Kernel string
@@ -47,6 +48,7 @@ static Stbar stbar[] = {
 	{ mount, 1, NULL },
 	{ mailImap, 600, NULL },
 	{ todo, 60, NULL },
+	{ disk, 1, NULL },
 	{ os_kernel, 60, NULL },
 	{ bat, 1, NULL },
 	{ proc, 1, NULL },
