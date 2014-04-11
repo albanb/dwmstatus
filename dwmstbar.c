@@ -288,11 +288,11 @@ int mem(char *stat)
 {
 	int len;
 	FILE *infile;
-	long lnum1,lnum2,lnum3,lnum4,lnum5,lnum6;
+	long lnum1,lnum2,lnum3,lnum4,lnum5,lnum6,spare;
 
 	infile=fopen(MEM_FILE,"r");
-	fscanf(infile,"MemTotal: %ld kB\nMemFree: %ld kB\nBuffers: %ld kB\nCached: %ld kB\n",&lnum1,&lnum2,&lnum3,&lnum4);
-	fseek(infile,364,SEEK_SET);
+	fscanf(infile,"MemTotal: %ld kB\nMemFree: %ld kB\nMemAvailable	%ld kB\nBuffers: %ld kB\nCached: %ld kB\n",&lnum1,&lnum2,&spare,&lnum3,&lnum4);
+	fseek(infile,392,SEEK_SET);
 	fscanf(infile,"SwapTotal: %ld kB\nSwapFree: %ld kB\n",&lnum5,&lnum6);
 	fclose(infile);
 	if (lnum5 != lnum6)
