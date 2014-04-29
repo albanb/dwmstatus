@@ -28,40 +28,10 @@ typedef struct {
 	char * const *cmd;
 } Stbar;
 
-int protocol_priority[] = {GNUTLS_TLS1_2, GNUTLS_TLS1_1, GNUTLS_TLS1, GNUTLS_SSL3, 0};
-
-typedef enum { imap, imaps } Protocol;
-
 typedef struct
 {
-	gnutls_session_t session;
-	gnutls_certificate_credentials_t xcred;
-} SslSession;
-
-typedef union Session
-{
-	FILE *f;
-	SslSession s;
-} Comm;
-
-typedef struct
-{
-	char *serverName;
-	Protocol protocol;
-	int port;
-	char *user;
-	char *passwd;
-	char *inbox;
-	Comm comm;
-} Box;
-
-typedef struct
-{
-	int (*mailInit) (Box *boxes);
-	int (*mailRead) (char *buf, char *ctl, Box boxes);
-	int (*mailWrite) (char *buf, Box boxes);
-	int (*mailClose) (int fd, Box boxes);
-} MailFunction;
+	char mailPath[58];
+} Maildir;
 
 /* Functions declaration */
 static int alsa_sound(char *stat);
@@ -78,16 +48,7 @@ static int temp(char *stat);
 static int runevery(time_t *ltime, int sec);
 static int get_freespace(char *mntpt);
 static int disk(char *stat);
-static int mailImap (char *stat);
-static int mail_socket_init (Box *boxes);
-static int mail_socket_write (char *buf, Box boxes);
-static int mail_socket_read (char *buf, char *ctl, Box boxes);
-static int mail_socket_close (int fd, Box boxes);
-static int mail_ssl_init (Box *boxes);
-static int mail_ssl_write (char *buf, Box boxes);
-static int mail_ssl_read (char *buf, char *ctl, Box boxes);
-static int mail_ssl_close (int fd, Box boxes);
-static int sock_connect (char *hostname, int port);
+static int mailCount(char *stat);
 static int buffer_init (char *buf);
 
 /*Your configuration*/
@@ -480,106 +441,32 @@ int disk(char *stat)
 	return len;
 }
 
-/*Mail notification via IMAP protocol*/
-int mailImap(char *stat)
+/*Mail notification through maildir*/
+int mailCount(char *stat)
 {
-	MailFunction mailFunction;
-	int fd, err, len = 0;
-	unsigned int newMail, nbBox;
-	char buf[BUF_SIZE];
-	char protCtl[128];
-	
-	/*Loop on all mailbox*/
-	for (nbBox = 0; nbBox < LENGTH(boxes); nbBox++)
+	int newMail, nbMaildir, len = 0;
+	DIR* dir = NULL;
+	struct dirent* rf = NULL;
+
+	for (nbMaildir =0; nbMaildir < LENGTH(maildirs); nbMaildir++ )
 	{
-		/*Set functions to use depending on the mailbox protocol*/
-
-  		if (boxes[nbBox].protocol == imap)
+		newMail = 0;
+		dir = opendir(maildirs[nbMaildir].mailPath); /* try to open directory */
+		if (dir == NULL)
 		{
-			mailFunction.mailInit = mail_socket_init;
-			mailFunction.mailRead = mail_socket_read;
-			mailFunction.mailWrite = mail_socket_write;
-			mailFunction.mailClose = mail_socket_close;
+			perror("No maildir directory");
 		}
-		else if (boxes[nbBox].protocol == imaps )
+		while ((rf = readdir(dir)) != NULL) /*count number of file*/
 		{
-			mailFunction.mailInit = mail_ssl_init;
-			mailFunction.mailRead = mail_ssl_read;
-			mailFunction.mailWrite = mail_ssl_write;
-			mailFunction.mailClose = mail_ssl_close;
+			if (strcmp(rf->d_name, ".") != 0 && strcmp(rf->d_name, "..") != 0)
+			{
+				newMail++;
+			}
 		}
-		else
-		{
-			return -1;
-		}
-
-		/*Init environment to communicate with the server*/
-		fd = mailFunction.mailInit(&boxes[nbBox]);
-		if (fd < 0)
-		{
-			return -1;
-		}
-
-		/*Login to account*/
-		sprintf (buf, "a001 LOGIN %s %s\r\n", boxes[nbBox].user, boxes[nbBox].passwd);
-		if (mailFunction.mailWrite (buf, boxes[nbBox]) < 0)
-		{
-			return -1;
-		}
-		strcpy (protCtl,"a001 ");
-		do
-		{
-			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
-		} while (err == 1);
-		if (strstr (buf,"a001 OK") == NULL || err < 0)
-		{
-			return -1;
-		};
-		
-		/*Ask status to mailbox*/
-		sprintf (buf,"a002 STATUS %s (UNSEEN)\r\n",boxes[nbBox].inbox);
-		if (mailFunction.mailWrite (buf, boxes[nbBox]) < 0)
-		{
-			return -1;
-		}
-		strcpy (protCtl,"a002 ");
-
-		/*Reinit buffer before reading status*/
-		buffer_init (buf);
-		do
-		{
-			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
-			sscanf(buf,"* STATUS %*s (UNSEEN %u)", &newMail);
-		} while (err == 1);
-		if (strstr (buf,"a002 OK") == NULL || err < 0)
-		{
-			return -1;
-		};
-		/*Reinit buffer before reading status*/
-		buffer_init (buf);
-		/*Logout from account*/
-		sprintf (buf,"a003 LOGOUT\r\n");
-		if (mailFunction.mailWrite (buf, boxes[nbBox]) < 0)
-		{
-			return -1;
-		}
-		strcpy (protCtl,"a003 ");
-		do
-		{
-			err = mailFunction.mailRead (buf, protCtl, boxes[nbBox]);
-		} while (err == 1);
-		if (strstr (buf,"a003 OK") == NULL || err < 0)
-		{
-			return -1;
-		};
-		/*Close and free environment*/
-		if (mailFunction.mailClose (fd, boxes[nbBox]) < 0)
-		{
-			return -1;
-		}
+		closedir(dir);
 		if (newMail > 0)
 		{
-			switch (nbBox)
+			switch (nbMaildir)
 			{
 				case 0:
 					len = sprintf (stat+len, MAIL_STR_0, newMail);
@@ -599,289 +486,7 @@ int mailImap(char *stat)
 			}
 		}
 	}
-
-	return 0;
-
-}
-
-int mail_socket_init (Box *boxes)
-{
-	int fd;
-	FILE *fp;
-
-	fd = sock_connect (boxes->serverName, boxes->port);
-	if (fd == -1)
-	{
-		return -1;
-	}
-	fp = fdopen (fd, "r+");
-	if (fp == NULL)
-	{
-		perror ("dwmstbar error opening file");
-		return -1;
-	}
-	boxes->comm.f = fp;
-	
-	return fd;
-}
-
-int mail_socket_write (char *buf, Box boxes)
-{
-	int size, err;
-
-	size = fprintf (boxes.comm.f, "%s", buf);
-	if (size < 0)
-	{
-		perror ("dwmstbar error writing");
-		return -1;
-	}
-
-	err = fflush (boxes.comm.f);
-	if (err != 0)
-	{
-		perror ("dwmstbar error flushing");
-		return -1;
-	}
-
-	return size;
-}
-
-int mail_socket_read (char *buf, char *ctl, Box boxes)
-{
-	int err, len = 0;
-
-	buf[0] = '\0';
-
-	do
-	{
-		len = strlen (buf);
-		err = fflush (boxes.comm.f);
-		if (err != 0)
-		{
-			perror ("dwmstbar error flushing");
-			return -1;
-		}
-		
-		if (fgets (buf+len, BUF_SIZE, boxes.comm.f) == NULL)
-		{
-			perror ("dwmstbar error reading");
-			return -1;
-		}
-	} while ((strstr(buf+len,ctl) == NULL) && (len < BUF_SIZE));
-
-	return 0;
-}
-
-int mail_socket_close (int fd, Box boxes)
-{
-	int err;
-
-	err = fclose (boxes.comm.f);
-	if (err !=0)
-	{
-		perror ("dwmstbar error mail_socket_close");
-		return -1;
-	}
-
-	return err;
-}
-
-int mail_ssl_init (Box *boxes)
-{
-	int fd, err, type;
-	unsigned int status;
-	gnutls_certificate_credentials_t xcred;
-	gnutls_session_t session;
-	gnutls_datum_t out;
-
-	/*Init SSL session and certificates */
-	err = gnutls_global_init();
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl global init");
-		return -1;
-	}
-	err = gnutls_certificate_allocate_credentials (&xcred);
-  	if (err < 0)
-	{
-		perror ("dwmstbar ssl init allocate credentials");
-		return -1;
-	}
-	err = gnutls_certificate_set_x509_trust_file (xcred, CAFILE, GNUTLS_X509_FMT_PEM);
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl init add trusted ca");
-		return -1;
-	}
-	err = gnutls_init (&session, GNUTLS_CLIENT);
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl init");
-		return -1;
-	}
-
-	/*Create kernel socket to use for SSL session*/
-	fd = sock_connect (boxes->serverName, boxes->port);
-	if (fd == -1)
-		return -1;
-
-	/*Initialise transport layer for SSL connection*/
-	gnutls_transport_set_ptr (session, (gnutls_transport_ptr)fd);
-  	err = gnutls_set_default_priority (session);
-  	if (err < 0)
-	{
-		perror ("dwmstbar ssl init set default priority");
-		return -1;
-	}
-	err = gnutls_protocol_set_priority (session, protocol_priority);
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl init set priority");
-		return -1;
-	}
-	err = gnutls_credentials_set (session, GNUTLS_CRD_CERTIFICATE, xcred);
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl init set credentials");
-		return -1;
-	}
-	/*SSL handshake to negociate connection with server*/
-	do
-	{
-	    err = gnutls_handshake (session);
-    	} while (err < 0 && gnutls_error_is_fatal (err) == 0);
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl handshake");
-		return -1;
-	}
-  
-	/*Check server credentials*/
-	err = gnutls_certificate_verify_peers3 (session, boxes->serverName, &status);
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl init verify peers");
-		return -1;
-	}
-	type = gnutls_certificate_type_get (session);
-	if (type == GNUTLS_CRT_UNKNOWN)
-	{
-		perror ("dwmstbar ssl init certificate type get");
-		return -1;
-	}
-	err = gnutls_certificate_verification_status_print( status, type, &out, 0);
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl init certificate verification");
-		return -1;
-	}
-	gnutls_free(out.data);
-
-	boxes->comm.s.session = session;
-	boxes->comm.s.xcred = xcred;
-
-	return fd;
-}
-
-int mail_ssl_write (char *buf, Box boxes)
-{
-	int len, err, sent = 0;
-
-	len = strlen(buf);
-	do
-	{
-		err = gnutls_record_send (boxes.comm.s.session, buf+sent, len-sent);
-		sent+=err;
-	}
-	while (sent < len);
-
-	if (err < 0)
-	{
-		perror("dwmstbar ssl write");
-		return -1;
-	}
-
 	return len;
-}
-
-int mail_ssl_read (char *buf, char *ctl, Box boxes)
-{
-	int err;
-	int len = 0;
-
-	do
-	{
-		err = gnutls_record_recv (boxes.comm.s.session,buf+len,BUF_SIZE);
-		len = strlen (buf);
-	}
-	while ((err == GNUTLS_E_AGAIN || err == GNUTLS_E_INTERRUPTED || strstr(buf,ctl) == NULL) && len < BUF_SIZE);
-
-	if (err < 0)
-	{
-		perror("dwmstbar ssl read");
-		return -1;
-	}
-
-	return 0;
-}
-
-int mail_ssl_close (int fd, Box boxes)
-{
-	int err;
-	gnutls_certificate_credentials_t xcred;
-
-	/*End SSL connection*/
-	err = gnutls_bye (boxes.comm.s.session, GNUTLS_SHUT_RDWR);
-	if (err < 0)
-	{
-		perror ("dwmstbar ssl close session");
-		return -1;
-	}
-	gnutls_deinit (boxes.comm.s.session);
-	gnutls_certificate_free_credentials (boxes.comm.s.xcred);
-	gnutls_global_deinit ();
-	err = close (fd);
-	if (err == -1)
-	{
-		perror ("dwmstbar ssl close fd");
-		return -1;
-	}
-
-
-	return 0;
-}
-
-int sock_connect (char *hostname, int port)
-{
-  struct hostent *host;
-  struct sockaddr_in addr;
-  int fd, i;
-
-  host = gethostbyname (hostname);
-  if (host == NULL)
-    {
-      perror("dwmstbar gethostbyname");
-      return -1;
-    };
-
-  fd = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if (fd == -1)
-    {
-      perror("dwmstbar error opening socket");
-      return -1;
-    };
-
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = *(unsigned long *) host->h_addr_list[0];
-  addr.sin_port = htons (port);
-  i = connect (fd, (struct sockaddr *) &addr, sizeof (struct sockaddr));
-  if (i == -1)
-    {
-      perror("dwmstbar error connecting");
-      close (fd);
-      return -1;
-    };
-  return fd;
 }
 
 int buffer_init(char *buf)
