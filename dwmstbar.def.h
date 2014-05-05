@@ -39,10 +39,11 @@
 #define TODO_STR		"\x02\uE01F\x01%d"			// Todo string
 #define MOUNT_STR		"\x02\uE00C\x01%d"			// Mount string
 #define KERNEL_STR		"\x02\uE00E\x01%s"			// Kernel string
-#define MAIL_STR_0		"\x02\uE072\x01y%d"		// Mail notification string
-#define MAIL_STR_1		"\x01/s%d"			// Mail notification string
-#define MAIL_STR_2		"\x01/f%d"			// Mail notification string
-#define MAIL_STR_3		"\x01/g%d"			// Mail notification string
+#define MAIL_STR_0		"\x02\uE072"			// Mail notification string
+#define MAIL_STR_1		"\x01 y%d"			// Mail notification string
+#define MAIL_STR_2		"\x01 s%d"			// Mail notification string
+#define MAIL_STR_3		"\x01 f%d"			// Mail notification string
+#define MAIL_STR_4		"\x01 g%d"			// Mail notification string
 
 static Stbar stbar[] = {
 	{ mount, 1, NULL },

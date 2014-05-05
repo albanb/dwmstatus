@@ -444,7 +444,7 @@ int disk(char *stat)
 /*Mail notification through maildir*/
 int mailCount(char *stat)
 {
-	int newMail, nbMaildir, len = 0;
+	int newMail, nbMaildir, len = 0, envl = 0;
 	DIR* dir = NULL;
 	struct dirent* rf = NULL;
 
@@ -466,22 +466,28 @@ int mailCount(char *stat)
 		closedir(dir);
 		if (newMail > 0)
 		{
+			if (envl == 0)
+			{
+				len = sprintf (stat+len, MAIL_STR_0);
+				envl = 1;
+			}
 			switch (nbMaildir)
 			{
 				case 0:
-					len = sprintf (stat+len, MAIL_STR_0, newMail);
-					break;
-				case 1:
 					len = strlen (stat);
 					len = sprintf (stat+len, MAIL_STR_1, newMail);
 					break;
-				case 2:
+				case 1:
 					len = strlen (stat);
 					len = sprintf (stat+len, MAIL_STR_2, newMail);
 					break;
-				case 3:
+				case 2:
 					len = strlen (stat);
 					len = sprintf (stat+len, MAIL_STR_3, newMail);
+					break;
+				case 3:
+					len = strlen (stat);
+					len = sprintf (stat+len, MAIL_STR_4, newMail);
 					break;
 			}
 		}
