@@ -11,8 +11,8 @@ X11INC = /usr/include/X11
 X11LIB = /usr/lib/X11
 
 # includes and libs
-INCS = -I. -I/usr/include -I${X11INC} -I/usr/include/gnutls
-LIBS = -L/usr/lib -lc -L${X11LIB} -lX11 -lasound -lgnutls
+INCS = -I. -I/usr/include -I${X11INC}
+LIBS = -L/usr/lib -lc -L${X11LIB} -lX11 -lasound
 
 # flags
 CPPFLAGS = -DVERSION=\"${VERSION}\"

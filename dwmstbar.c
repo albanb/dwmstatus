@@ -12,8 +12,6 @@
 #include <dirent.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <gnutls/gnutls.h>
-#include <gnutls/x509.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
 
@@ -49,7 +47,7 @@ static int runevery(time_t *ltime, int sec);
 static int get_freespace(char *mntpt);
 static int disk(char *stat);
 static int mailCount(char *stat);
-static int buffer_init (char *buf);
+static pid_t proc_find(const char* name);
 
 /*Your configuration*/
 #include <dwmstbar.h>
@@ -447,7 +445,8 @@ int mailCount(char *stat)
 	int newMail, nbMaildir, len = 0, envl = 0;
 	DIR* dir = NULL;
 	struct dirent* rf = NULL;
-
+	pid_t lpid;
+	
 	for (nbMaildir =0; nbMaildir < LENGTH(maildirs); nbMaildir++ )
 	{
 		newMail = 0;
@@ -464,6 +463,16 @@ int mailCount(char *stat)
 			}
 		}
 		closedir(dir);
+		
+		/* Check if offlineimap is running */
+		lpid = proc_find("offlineimap");
+		/* If not running, display the mail in red */
+		if (lpid < 0 && envl == 0)
+		{
+			len = sprintf (stat+len, MAIL_STR_D);
+			envl = 1;
+		}
+	
 		if (newMail > 0)
 		{
 			if (envl == 0)
@@ -495,14 +504,50 @@ int mailCount(char *stat)
 	return len;
 }
 
-int buffer_init(char *buf)
+pid_t proc_find(const char* name) 
 {
-	int i;
-
-	for (i=0; i < BUF_SIZE; i++)
+	DIR* dir;
+	FILE *fp;
+	struct dirent* ent;
+	char *endptr, *first;
+	char buf[512];
+	long lpid;
+    
+	if (!(dir = opendir("/proc"))) 
 	{
-		buf[i] = '\0';
+		perror("can't open /proc");
+		return -1;
 	}
 
-	return 0;
+	while((ent = readdir(dir)) != NULL) 
+	{
+		/* if endptr is not a null character, the directory is not entirely numeric, so ignore it */
+		lpid = strtol(ent->d_name, &endptr, 10);
+		if (*endptr != '\0') 
+		{
+			continue;
+		}
+
+		/* try to open the cmdline file */
+		sprintf(buf, "/proc/%ld/comm", lpid);
+		fp = fopen(buf, "r");
+
+		if (fp)
+		{
+			if (fgets(buf, sizeof(buf), fp) != NULL)
+			{
+				/* check the first token in the file, the program name */
+				first = strtok(buf,"\n");    
+				if (!strcmp(first, name))
+				{
+					fclose(fp);
+					closedir(dir);
+					return (pid_t)lpid;
+				}
+			}
+			fclose(fp);
+		}
+	}
+	closedir(dir);
+	return -1;
 }
