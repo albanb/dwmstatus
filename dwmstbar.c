@@ -346,7 +346,10 @@ int todo(char *stat)
 	fclose(infile);
 	free(buf);
 	
-	len=sprintf(stat,TODO_STR,itasks);
+	if(itasks != 0)
+	{
+		len=sprintf(stat,TODO_STR,itasks);
+	}
 
 	return len;
 }
