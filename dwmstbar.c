@@ -89,8 +89,8 @@ int main() {
 					statbck[i][0]='\0';
 					strcat(statbck[i],statnext);
 				}
-				else
-					strcat(status,statbck[i]);
+//				else
+//					strcat(status,statbck[i]);
 			}
 			else
 				strcat(status,statbck[i]);
