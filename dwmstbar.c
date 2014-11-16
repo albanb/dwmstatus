@@ -88,14 +88,26 @@ int main() {
 					strcat(status,statnext);
 					statbck[i][0]='\0';
 					strcat(statbck[i],statnext);
+					#ifdef DEBUG
+						printf("line %i : %s",i,(char *)statnext);
+					#endif
+					statnext[0] = '\0';
 				}
 //				else
 //					strcat(status,statbck[i]);
 			}
 			else
+			{
 				strcat(status,statbck[i]);
+				#ifdef DEBUG
+					printf("line %i : %s",i,(char *)statbck[i]);
+				#endif
+			}
 		}
-	/* Set root name */
+		#ifdef DEBUG
+			printf("status : %s", (char *)status);
+		#endif
+		/* Set root name */
 		XStoreName(dpy,root,status);
 		XFlush(dpy);
 		sleep(INTERVAL);

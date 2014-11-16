@@ -1,3 +1,9 @@
+#ifndef DWMSTATUSDEF
+#define DWMSTATUSDEF
+
+//Set and unset debug precompilation option to debug the c source
+#define DEBUG
+
 /* Files to read system information */
 #define BATT_NOW		"/sys/class/power_supply/BAT0/charge_now"
 #define BATT_FULL		"/sys/class/power_supply/BAT0/charge_full"
@@ -64,3 +70,4 @@ Maildir maildirs[] = {
 	{ "/home/alban/.cache/maildir/mailbox1/INBOX/new" },
 	{ "/home/alban/.cache/maildir/mailbox2/INBOX/new" },
 };
+#endif
