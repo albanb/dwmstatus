@@ -13,7 +13,7 @@
 #define FILE_UPLOAD		"/sys/class/net/%s/statistics/tx_bytes"
 #define FILE_DOWNLOAD		"/sys/class/net/%s/statistics/rx_bytes"
 #define FILE_OPER		"/sys/class/net/%s/operstate"
-#define TODO_FILE		"/home/alban/.local/share/todo/todo.txt"
+#define TASK_CMD                "task -DELETE count"
 #define MOUNT_DIR		"/media"
 #define KERNELOS		"/proc/sys/kernel/osrelease"
 #define CAFILE 			"/etc/ssl/certs/ca-certificates.crt"
@@ -42,7 +42,7 @@
 #define DATE_TIME_STR		"\x02\uE015\x01%a %d %b %Y %H:%M"		// This is a strftime format string which is passed localtime
 #define TEMP_STR		"\x02\uE01D\x01%d°C"			// Temperature
 #define SIZE_STR		"\x02\uE077\x01/ %d%% \uE10e %d%%"			// Size
-#define TODO_STR		"\x02\uE01F\x01%d"			// Todo string
+#define TASK_STR		"\x02\uE01F\x01%c"			// Task string
 #define MOUNT_STR		"\x02\uE00C\x01%d"			// Mount string
 #define KERNEL_STR		"\x02\uE00E\x01%s"			// Kernel string
 #define MAIL_STR_0		"\x02\uE072"			// Mail notification string

@@ -1,6 +1,8 @@
 /*Include libraries*/
 #include <unistd.h>
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
+#undef _POSIX_C_SOURCE
 #include <stdlib.h>
 #include <math.h>
 #include <errno.h>
@@ -39,7 +41,6 @@ static int proc(char *stat);
 static int mem(char *stat);
 static int is_up(char *device);
 static int net(char *stat);
-static int todo(char *stat);
 static int mount(char *stat);
 static int os_kernel(char *stat);
 static int temp(char *stat);
@@ -47,6 +48,7 @@ static int runevery(time_t *ltime, int sec);
 static int get_freespace(char *mntpt);
 static int disk(char *stat);
 static int mailCount(char *stat);
+static int task(char *stat);
 static pid_t proc_find(const char* name);
 
 /*Your configuration*/
@@ -340,31 +342,35 @@ int net(char *stat)
 	return len;
 }	
 
-/* Set todo number */
-int todo(char *stat)
+/* Set task number */
+int task(char *stat)
 {
-	int len,itasks=0;
+	int len;
 	char *buf;
-	int bufsize =1000;
-	FILE *infile;
+	int bufsize = 10;
+	FILE *cmd;
 
-	buf= (char *) calloc(bufsize,1);
+	buf= (char *) calloc(bufsize,3);
 	
-	infile=fopen(TODO_FILE,"r");
-	while(fgets(buf,bufsize,infile))
-	{
-		itasks++;
-	}
-	fclose(infile);
+        /* Execute tasks -DELETE count to know the number of undeleted tasks */
+	cmd=popen(TASK_CMD,"r");
+        /* Check if there is no fail in the popen call */
+        if (cmd == NULL)
+        {
+            return 0;
+        }
+	if (fgets(buf,bufsize-1,cmd) == NULL)
+        {
+            return 0;
+        }
+	pclose(cmd);
+        len=sprintf(stat,TASK_STR, buf[0]);
 	free(buf);
-	
-	if(itasks != 0)
-	{
-		len=sprintf(stat,TODO_STR,itasks);
-	}
 
 	return len;
 }
+
+
 
 /* Set mount drive notification */
 int mount(char *stat)
