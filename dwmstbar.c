@@ -382,7 +382,7 @@ int mount(char *stat)
 	/* Open media directory */
 	dir=opendir(MOUNT_DIR);
 
-	if (dir != NUL)
+	if (dir != NULL)
         {
             /*Read media directory to check mounted media */
             while ((rf=readdir(dir))!=NULL)
