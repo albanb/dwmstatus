@@ -382,16 +382,19 @@ int mount(char *stat)
 	/* Open media directory */
 	dir=opendir(MOUNT_DIR);
 
-	/*Read media directory to check mounted media */
-	while ((rf=readdir(dir))!=NULL)
-	{
+	if (dir != NUL)
+        {
+            /*Read media directory to check mounted media */
+            while ((rf=readdir(dir))!=NULL)
+	    {
 		/*Ignore . and .. directories */
 		if (strcmp(rf->d_name,".") != 0 && strcmp(rf->d_name,"..") != 0)
 			imount++;
-	}
+	    }
 
-	/* Close media */
-	closedir(dir);
+	    /* Close media */
+	    closedir(dir);
+        }
 
 	if (imount == 0)
 		len = 0;
