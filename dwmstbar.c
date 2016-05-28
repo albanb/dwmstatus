@@ -170,8 +170,10 @@ int alsa_sound(char *stat)
 	if(mute == 0)
 		len = sprintf(stat, VOL_MUTE_STR, 0);
 	else
+        {
 		realvol = (vol*100)/max;
 		len = sprintf(stat, VOL_STR, realvol);
+        }
 
 	if(vol_info)
 		snd_mixer_selem_id_free(vol_info);
