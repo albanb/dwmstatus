@@ -359,15 +359,25 @@ int task(char *stat)
         /* Check if there is no fail in the popen call */
         if (cmd == NULL)
         {
+	    pclose(cmd);
             return 0;
         }
 	if (fgets(buf,bufsize-1,cmd) == NULL)
         {
+            free(buf);
+	    pclose(cmd);
             return 0;
         }
 	pclose(cmd);
-        len=sprintf(stat,TASK_STR, buf[0]);
-	free(buf);
+        if(strncmp(buf,"0",1) != 0)
+        {
+            len=sprintf(stat,TASK_STR, buf[0]);
+        }
+        else
+        {
+            len = 0;
+        }
+        free(buf);
 
 	return len;
 }
