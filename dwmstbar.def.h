@@ -27,18 +27,18 @@
 
 /* Strings format for information display in the status bar */
 #define VOL_STR			"\x02\uE05D\x01%d%%"			// Volume
-#define VOL_MUTE_STR		"\x03\uE04F %d%%"			// Volume
-#define BAT_STR			"\x04\uE032 %dmin"			// Battery, BAT, above BATT_LOW percentage
-#define BAT_LOW_STR		"\x03\uE031 %dmin"			// Battery, BAT, below BATT_LOW percentage
+#define VOL_MUTE_STR		"\x04\uE04F %d%%"			// Volume
+#define BAT_STR			"\x03\uE032 %dmin"			// Battery, BAT, above BATT_LOW percentage
+#define BAT_LOW_STR		"\x04\uE031 %dmin"			// Battery, BAT, below BATT_LOW percentage
 #define BAT_FULL_STR		"\x02\uE033\x01%d%%"			// Battery, full
 #define BAT_CHRG_STR		"\x05\uE032 %ld%%"			// Battery, AC
 #define CPU_STR			"\x02\uE026\x01%d%%"			// CPU percent
-#define CPU_HI_STR		"\x03\uE026 %d%%"			// CPU percent when above CPU_HI%
+#define CPU_HI_STR		"\x04\uE026 %d%%"			// CPU percent when above CPU_HI%
 #define MEM_STR			"\x02\uE020\x01%ld%ciB"		// MEM percent
-#define MEM_SWAP_STR		"\x04\uE020 %ld%ciB"		// MEM percent
+#define MEM_SWAP_STR		"\x03\uE020 %ld%ciB"		// MEM percent
 #define NET_STR			"\x02\uE060\x01%ldKbp/s\x02\uE061\x01%ldKbp/s"	//NET oper string up and down
 #define WIFI_STR		"\x02\uE02D \uE060\x01%ldKbp/s\x02\uE061\x01%ldKbp/s"	//NET down string up and down
-#define NET_DOWN_STR		"\x03\uE060 %ldKbp/s \uE061 %ldKbp/s"	//NET down string up and down
+#define NET_DOWN_STR		"\x04\uE060 %ldKbp/s \uE061 %ldKbp/s"	//NET down string up and down
 #define DATE_TIME_STR		"\x02\uE015\x01%a %d %b %Y %H:%M"		// This is a strftime format string which is passed localtime
 #define TEMP_STR		"\x02\uE01D\x01%d°C"			// Temperature
 #define SIZE_STR		"\x02\uE077\x01/ %d%% \uE10e %d%%"			// Size
@@ -46,7 +46,7 @@
 #define MOUNT_STR		"\x02\uE00C\x01%d"			// Mount string
 #define KERNEL_STR		"\x02\uE00E\x01%s"			// Kernel string
 #define MAIL_STR_0		"\x02\uE072"			// Mail notification string
-#define MAIL_STR_D		"\x03\uE072 "		// Mail notification string when no mail check
+#define MAIL_STR_D		"\x04\uE072 "		// Mail notification string when no mail check
 #define MAIL_STR_1		"\x01 y%d"			// Mail notification string
 #define MAIL_STR_2		"\x01 s%d"			// Mail notification string
 #define MAIL_STR_3		"\x01 f%d"			// Mail notification string
