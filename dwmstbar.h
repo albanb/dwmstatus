@@ -22,7 +22,7 @@
 #define WIRED			"enp10s0"
 #define BATT_LOW		15			// Below BATT_LOW percentage left on battery, the battery display turns red
 #define INTERVAL		1			// Sleeps for INTERVAL seconds between updates
-#define CPU_HI			80			// Above CPU_HIGH, cpu display turns red
+#define CPU_HI			85			// Above CPU_HIGH, cpu display turns red
 
 /* Strings format for information display in the status bar */
 #define VOL_STR			"\x02\uE05D\x01%d%%"			// Volume
