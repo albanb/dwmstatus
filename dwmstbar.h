@@ -49,7 +49,6 @@
 #define MAIL_STR_1		"\x01 y%d"			// Mail notification string
 #define MAIL_STR_2		"\x01 s%d"			// Mail notification string
 #define MAIL_STR_3		"\x01 f%d"			// Mail notification string
-#define MAIL_STR_4		"\x01 g%d"			// Mail notification string
 
 static Stbar stbar[] = {
 	{ mount, 1, NULL },
@@ -70,6 +69,5 @@ Maildir maildirs[] = {
 	{ "/home/alban/.cache/maildir/yahooalban/Inbox/new" },
 	{ "/home/alban/.cache/maildir/freebinmail/INBOX/new" },
 	{ "/home/alban/.cache/maildir/freealban/INBOX/new" },
-	{ "/home/alban/.cache/maildir/gmail/INBOX/new" },
 };
 #endif
