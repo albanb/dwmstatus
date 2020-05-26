@@ -49,6 +49,8 @@
 #define MAIL_STR_D		"\x04\uE072 "		// Mail notification string when no mail check
 #define MAIL_STR_1		"\x01 y%d"			// Mail notification string
 #define MAIL_STR_2		"\x01 s%d"			// Mail notification string
+#define MAIL_STR_3		"\x01 f%d"			// Mail notification string
+#define MAIL_STR_4		"\x01 g%d"			// Mail notification string
 
 static Stbar stbar[] = {
 	{ mount, 1, NULL },
