@@ -49,7 +49,6 @@ static int get_freespace(char *mntpt);
 static int disk(char *stat);
 static int mailCount(char *stat);
 static int task(char *stat);
-static pid_t proc_find(const char* name);
 
 /*Your configuration*/
 #include <dwmstbar.h>
