@@ -12,7 +12,7 @@
 #define FILE_UPLOAD	    	"/sys/class/net/%s/statistics/tx_bytes"
 #define FILE_DOWNLOAD   	"/sys/class/net/%s/statistics/rx_bytes"
 #define FILE_OPER	    	"/sys/class/net/%s/operstate"
-#define TASK_CMD            "task -DELETED count"
+#define TASK_CMD            "todo count"
 #define MOUNT_DIR	    	"/run/media/alban"
 #define KERNELOS	    	"/proc/sys/kernel/osrelease"
 #define CAFILE 		    	"/etc/ssl/certs/ca-certificates.crt"
