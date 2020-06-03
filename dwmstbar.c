@@ -514,13 +514,15 @@ int mailCount(char *stat)
             free(buf);
             pclose(cmd);
 		}
-            return 0;
-        }
         pclose(cmd);
-        if(strncmp(buf,"active",6) !=0)
+        if(strncmp(buf,"active",6) !=0 )
         {
             len = sprintf (stat+len, MAIL_STR_D);
 			envl = 1;
+        }
+        else
+        {
+            len = 0;
         }
         free(buf);
 	
