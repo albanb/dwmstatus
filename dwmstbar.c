@@ -508,21 +508,19 @@ int mailCount(char *stat)
             pclose(cmd);
             return 0;
         }
-        if(fgets(buf,bufsize-1,cmd) == NULL)
+        if(fgets(buf,bufsize-1,cmd) != NULL)
         {
-            free(buf);
-            pclose(cmd);
+            if(strncmp(buf,"active",6) !=0 )
+            {
+                len = sprintf (stat+len, MAIL_STR_D);
+                envl = 1;
+            }
+            else
+            {
+                len = 0;
+            }
 		}
         pclose(cmd);
-        if(strncmp(buf,"active",6) !=0 )
-        {
-            len = sprintf (stat+len, MAIL_STR_D);
-			envl = 1;
-        }
-        else
-        {
-            len = 0;
-        }
         free(buf);
 	
 		if (newMail > 0)
