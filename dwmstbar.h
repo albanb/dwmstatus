@@ -23,6 +23,7 @@
 #define BATT_LOW	    	15			// Below BATT_LOW percentage left on battery, the battery display turns red
 #define INTERVAL	    	1			// Sleeps for INTERVAL seconds between updates
 #define CPU_HI			    80			// Above CPU_HIGH, cpu display turns red
+#define MAIL_CMD            "systemctl --user is-active mbsync.timer"
 
 /* Strings format for information display in the status bar */
 #define VOL_STR			    "\x02\uE05D\x01%d%%"			// Volume
@@ -67,8 +68,8 @@ static Stbar stbar[] = {
 };
 
 Maildir maildirs[] = {
-	{ "/home/alban/.cache/maildir/yahooalban/Inbox/new" },
-	{ "/home/alban/.cache/maildir/freebinmail/INBOX/new" },
-	{ "/home/alban/.cache/maildir/freealban/INBOX/new" },
+	{ "/home/alban/.local/mail/yahooalban_brillat/Inbox/new" },
+	{ "/home/alban/.local/mail/freebinmail/INBOX/new" },
+	{ "/home/alban/.local/mail/freealbanbrillat/INBOX/new" },
 };
 #endif

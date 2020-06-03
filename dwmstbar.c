@@ -478,10 +478,11 @@ int disk(char *stat)
 /*Mail notification through maildir*/
 int mailCount(char *stat)
 {
-	int newMail, nbMaildir, len = 0, envl = 0;
+	int newMail, nbMaildir, len = 0, envl = 0, bufsize = 10;
 	DIR* dir = NULL;
 	struct dirent* rf = NULL;
-	pid_t lpid;
+    FILE *cmd;
+    char *buf;
 	
 	for (nbMaildir =0; nbMaildir < LENGTH(maildirs); nbMaildir++ )
 	{
@@ -500,14 +501,28 @@ int mailCount(char *stat)
 		}
 		closedir(dir);
 		
-		/* Check if offlineimap is running */
-		lpid = proc_find("offlineimap");
+		/* Execute cmd to check if mail check is done */
+        cmd=popen(MAIL_CMD,"r");
 		/* If not running, display the mail in red */
-		if (lpid < 0 && envl == 0)
-		{
-			len = sprintf (stat+len, MAIL_STR_D);
-			envl = 1;
+		if (cmd == NULL)
+        {
+            pclose(cmd);
+            return 0;
+        }
+        if(fgets(buf,bufsize-1,cmd) == NULL)
+        {
+            free(buf);
+            pclose(cmd);
 		}
+            return 0;
+        }
+        pclose(cmd);
+        if(strncmp(buf,"active",6) !=0)
+        {
+            len = sprintf (stat+len, MAIL_STR_D);
+			envl = 1;
+        }
+        free(buf);
 	
 		if (newMail > 0)
 		{
