@@ -38,16 +38,16 @@
 #define MEM_STR		    	"\x02\uE020\x01%ld%ciB"		// MEM percent
 #define MEM_SWAP_STR		"\x03\uE020 %ld%ciB"		// MEM percent
 #define NET_STR		    	"\x02\uE060\x01%ldKbp/s\x02\uE061\x01%ldKbp/s"	//NET oper string up and down
-#define WIFI_STR	    	"\x02\uE02D \uE060\x01%ldKbp/s\x02\uE061\x01%ldKbp/s"	//NET down string up and down
-#define NET_DOWN_STR		"\x04\uE060 %ldKbp/s \uE061 %ldKbp/s"	//NET down string up and down
+#define WIFI_STR	    	"\x02\uE02D\uE060\x01%ldKbp/s\x02\uE061\x01%ldKbp/s"	//NET down string up and down
+#define NET_DOWN_STR		"\x04\uE060%ldKbp/s \uE061 %ldKbp/s"	//NET down string up and down
 #define DATE_TIME_STR		"\x02\uE015\x01%a %d %b %Y %H:%M"		// This is a strftime format string which is passed localtime
 #define TEMP_STR	    	"\x02\uE01D\x01%d°C"			// Temperature
-#define SIZE_STR	    	"\x02\uE077\x01/ %d%% \uE10e %d%%"			// Size
+#define SIZE_STR	    	"\x02\uE077\x01/%d%%\uE10e%d%%"			// Size
 #define TASK_STR	    	"\x02\uE01F\x01%c"			// Task string
 #define MOUNT_STR	    	"\x02\uE00C\x01%d"			// Mount string
 #define KERNEL_STR	    	"\x02\uE00E\x01%s"			// Kernel string
 #define MAIL_STR_0	    	"\x02\uE072"			// Mail notification string
-#define MAIL_STR_D	    	"\x04\uE072 "		// Mail notification string when no mail check
+#define MAIL_STR_D	    	"\x04\uE072"		// Mail notification string when no mail check
 #define MAIL_STR_1	    	"\x01 y%d"			// Mail notification string
 #define MAIL_STR_2	    	"\x01 s%d"			// Mail notification string
 #define MAIL_STR_3	    	"\x01 f%d"			// Mail notification string

@@ -481,9 +481,31 @@ int mailCount(char *stat)
 	DIR* dir = NULL;
 	struct dirent* rf = NULL;
     FILE *cmd;
-    char *buf;
+    char buf[10];
 	
-	for (nbMaildir =0; nbMaildir < LENGTH(maildirs); nbMaildir++ )
+    /* Execute cmd to check if mail check is done */
+    cmd=popen(MAIL_CMD,"r");
+    /* If not running, display the mail in red */
+    if (cmd == NULL)
+    {
+        pclose(cmd);
+        return 0;
+    }
+    if(fgets(buf,bufsize-1,cmd) != NULL)
+    {
+        if(strncmp(buf,"active",6) !=0 )
+        {
+            len = sprintf (stat+len, MAIL_STR_D);
+            envl = 1;
+        }
+        else
+        {
+            len = 0;
+        }
+    }
+    pclose(cmd);
+	
+    for (nbMaildir =0; nbMaildir < LENGTH(maildirs); nbMaildir++ )
 	{
 		newMail = 0;
 		dir = opendir(maildirs[nbMaildir].mailPath); /* try to open directory */
@@ -500,29 +522,6 @@ int mailCount(char *stat)
 		}
 		closedir(dir);
 		
-		/* Execute cmd to check if mail check is done */
-        cmd=popen(MAIL_CMD,"r");
-		/* If not running, display the mail in red */
-		if (cmd == NULL)
-        {
-            pclose(cmd);
-            return 0;
-        }
-        if(fgets(buf,bufsize-1,cmd) != NULL)
-        {
-            if(strncmp(buf,"active",6) !=0 )
-            {
-                len = sprintf (stat+len, MAIL_STR_D);
-                envl = 1;
-            }
-            else
-            {
-                len = 0;
-            }
-		}
-        pclose(cmd);
-        free(buf);
-	
 		if (newMail > 0)
 		{
 			if (envl == 0)
