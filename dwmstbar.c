@@ -477,9 +477,9 @@ int disk(char *stat)
 /*Mail notification through maildir*/
 int mailCount(char *stat)
 {
-	int newMail, nbMaildir, len = 0, envl = 0, bufsize = 10;
-	DIR* dir = NULL;
-	struct dirent* rf = NULL;
+    int newMail, nbMaildir, len = 0, envl = 0, bufsize = 10;
+    DIR* dir = NULL;
+    struct dirent* rf = NULL;
     FILE *cmd;
     char buf[10];
 	
