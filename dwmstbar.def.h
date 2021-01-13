@@ -17,7 +17,7 @@
 #define MOUNT_DIR	    	"/media"
 #define KERNELOS	    	"/proc/sys/kernel/osrelease"
 #define CAFILE 		    	"/etc/ssl/certs/ca-certificates.crt"
-#define TEMPFILE	    	"/sys/class/hwmon/hwmon0/temp1_input"
+#define TEMPFILE	    	"/sys/class/hwmon/hwmon1/temp1_input"
 #define VOL_CH		    	"Master"	// Channel to watch for volume
 #define	WIRELESS	    	"wlp3s0"
 #define WIRED		    	"enp10s0"
