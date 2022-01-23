@@ -48,9 +48,8 @@
 #define MAIL_STR_0	    	"\x02\uE072"			// Mail notification string
 #define MAIL_STR_D	    	"\x03\uE072"		// Mail notification string when no mail check
 #define MAIL_STR_1	    	"\x01 p%d"			// Mail notification string
-#define MAIL_STR_2	    	"\x01 y%d"			// Mail notification string
-#define MAIL_STR_3	    	"\x01 s%d"			// Mail notification string
-#define MAIL_STR_4	    	"\x01 f%d"			// Mail notification string
+#define MAIL_STR_2	    	"\x01 s%d"			// Mail notification string
+#define MAIL_STR_3	    	"\x01 f%d"			// Mail notification string
 
 static Stbar stbar[] = {
 	{ mount, 1, NULL },
@@ -69,7 +68,6 @@ static Stbar stbar[] = {
 
 Maildir maildirs[] = {
 	{ "/home/alban/.local/mail/posteoalbanbrillat/INBOX/new" },
-	{ "/home/alban/.local/mail/yahooalban_brillat/Inbox/new" },
 	{ "/home/alban/.local/mail/freebinmail/INBOX/new" },
 	{ "/home/alban/.local/mail/freealbanbrillat/INBOX/new" },
 };

@@ -543,10 +543,6 @@ int mailCount(char *stat)
 					len = strlen (stat);
 					len = sprintf (stat+len, MAIL_STR_3, newMail);
 					break;
-				case 3:
-					len = strlen (stat);
-					len = sprintf (stat+len, MAIL_STR_4, newMail);
-					break;
 			}
 		}
 	}
